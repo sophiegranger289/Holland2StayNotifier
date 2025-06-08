@@ -1,167 +1,11 @@
 import logging
-
-import requests
-
+import json
+import os
 from dotenv import dotenv_values
-from telegram import TelegramBot
 
-env = dotenv_values(".env")
-TELEGRAM_API_KEY = env.get("TELEGRAM_API_KEY")
-DEBUGGING_CHAT_ID = env.get("DEBUGGING_CHAT_ID")
-
-debug_telegram = TelegramBot(apikey=TELEGRAM_API_KEY, chat_id=DEBUGGING_CHAT_ID)
-
-
-def generate_payload(cities, page_size):
-    payload = {
-        "operationName": "GetCategories",
-        "variables": {
-            "currentPage": 1,
-            "id": "Nw==",
-            "filters": {
-                "available_to_book": {"in": ["179", "336"]},
-                "city": {"in": cities},
-                "category_uid": {"eq": "Nw=="},
-            },
-            "pageSize": page_size,
-            "sort": {"available_startdate": "ASC"},
-        },
-        "query": """
-            query GetCategories($id: String!, $pageSize: Int!, $currentPage: Int!, $filters: ProductAttributeFilterInput!, $sort: ProductAttributeSortInput) {
-              categories(filters: {category_uid: {in: [$id]}}) {
-                items {
-                  uid
-                  ...CategoryFragment
-                  __typename
-                }
-                __typename
-              }
-              products(
-                pageSize: $pageSize
-                currentPage: $currentPage
-                filter: $filters
-                sort: $sort
-              ) {
-                ...ProductsFragment
-                __typename
-              }
-            }
-
-            fragment CategoryFragment on CategoryTree {
-              uid
-              meta_title
-              meta_keywords
-              meta_description
-              __typename
-            }
-
-            fragment ProductsFragment on Products {
-              items {
-                name
-                sku
-                city
-                url_key
-                available_to_book
-                available_startdate
-                building_name
-                finishing
-                living_area
-                no_of_rooms
-                resident_type
-                offer_text_two
-                offer_text
-                maximum_number_of_persons
-                type_of_contract
-                price_analysis_text
-                allowance_price
-                floor
-                basic_rent
-                lumpsum_service_charge
-                inventory
-                caretaker_costs
-                cleaning_common_areas
-                energy_common_areas
-                allowance_price
-                small_image {
-                  url
-                  label
-                  position
-                  disabled
-                  __typename
-                }
-                thumbnail {
-                  url
-                  label
-                  position
-                  disabled
-                  __typename
-                }
-                image {
-                  url
-                  label
-                  position
-                  disabled
-                  __typename
-                }
-                media_gallery {
-                  url
-                  label
-                  position
-                  disabled
-                  __typename
-                }
-                price_range {
-                  minimum_price {
-                    regular_price {
-                      value
-                      currency
-                      __typename
-                    }
-                    final_price {
-                      value
-                      currency
-                      __typename
-                    }
-                    discount {
-                      amount_off
-                      percent_off
-                      __typename
-                    }
-                    __typename
-                  }
-                  maximum_price {
-                    regular_price {
-                      value
-                      currency
-                      __typename
-                    }
-                    final_price {
-                      value
-                      currency
-                      __typename
-                    }
-                    discount {
-                      amount_off
-                      percent_off
-                      __typename
-                    }
-                    __typename
-                  }
-                  __typename
-                }
-                __typename
-              }
-              page_info {
-                total_pages
-                __typename
-              }
-              total_count
-              __typename
-            }
-        """,
-    }
-    return payload
-
+from telegram_chat import TelegramBot
+import requests
+import cloudscraper
 
 CITY_IDS = {
     "24": "Amsterdam",
@@ -215,30 +59,20 @@ MAX_REGISTER_TYPES = {
     "502": "Four",
 }
 
-
 def city_id_to_city(city_id):
-    # Use CITY_IDS dictionary for city lookup
     return CITY_IDS.get(city_id)
 
-
 def contract_type_id_to_str(contract_type_id):
-    # Use CONTRACT_TYPES dictionary for contract type lookup
     return CONTRACT_TYPES.get(contract_type_id, "Unknown")
 
-
 def room_id_to_room(room_id):
-    # Use ROOM_TYPES dictionary for room type lookup
     return ROOM_TYPES.get(room_id, "Unknown")
 
-
 def max_register_id_to_str(maxregister_id):
-    # Use MAX_REGISTER_TYPES dictionary for max occupancy lookup
     return MAX_REGISTER_TYPES.get(maxregister_id, "Unknown")
-
 
 def url_key_to_link(url_key):
     return f"https://holland2stay.com/residences/{url_key}.html"
-
 
 def clean_img(url):
     try:
@@ -248,9 +82,7 @@ def clean_img(url):
         ci = parts.index('cache')
         return '/'.join(parts[:ci] + parts[ci + 2:])
     except Exception as error:
-        debug_telegram.send_simple_msg(url)
-        debug_telegram.send_simple_msg(str(error))
-
+        return url
 
 def house_to_msg(house):
     return f"""
@@ -268,47 +100,90 @@ Contract type: {house['contract_type']}
 
 # See details and apply on Holland2Stay website."""
 
+def generate_payload(cities, page_size):
+    return {
+        "operationName": "GetCategories",
+        "variables": {
+            "currentPage": 1,
+            "id": "Nw==",
+            "filters": {
+                "available_to_book": {"in": ["179", "336"]},
+                "city": {"in": cities},
+                "category_uid": {"eq": "Nw=="},
+            },
+            "pageSize": page_size,
+            "sort": {"available_startdate": "ASC"},
+        },
+        "query": """
+            query GetCategories($id: String!, $pageSize: Int!, $currentPage: Int!, $filters: ProductAttributeFilterInput!, $sort: ProductAttributeSortInput) {
+              categories(filters: {category_uid: {in: [$id]}}) {
+                items { uid __typename }
+                __typename
+              }
+              products(
+                pageSize: $pageSize
+                currentPage: $currentPage
+                filter: $filters
+                sort: $sort
+              ) {
+                items {
+                  name sku city url_key available_to_book available_startdate building_name
+                  finishing living_area no_of_rooms resident_type offer_text_two offer_text
+                  maximum_number_of_persons type_of_contract price_analysis_text allowance_price
+                  floor basic_rent lumpsum_service_charge inventory caretaker_costs cleaning_common_areas
+                  energy_common_areas allowance_price
+                  media_gallery { url }
+                  price_range {
+                    maximum_price { final_price { value } }
+                  }
+                }
+              }
+            }
+        """,
+    }
 
-# Define the GraphQL query payload
-def scrape(cities=[], page_size=30):
+def scrape(cities=["24", "25"], page_size=30, apikey=None, debug_chat_id=None):
+    debug_telegram = TelegramBot(apikey=apikey, chat_id=debug_chat_id)
     payload = generate_payload(cities, page_size)
-    response = requests.post("https://api.holland2stay.com/graphql/", json=payload)
-    data = response.json()["data"]
-    cities_dict = {}
-    for c in cities:
-        cities_dict[c] = []
-    for house in data["products"]["items"]:
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+        "Origin": "https://holland2stay.com",
+        "Referer": "https://holland2stay.com/"
+    }
+
+    scraper = cloudscraper.create_scraper()
+    response = scraper.post("https://api.holland2stay.com/graphql/", json=payload, headers=headers)
+
+    try:
+        data = response.json()["data"]
+    except Exception as e:
+        debug_telegram.send_simple_msg(f"JSON解析失败: {str(e)}")
+        logging.error(f"JSON解析失败: {str(e)}")
+        return {}
+
+    cities_dict = {c: [] for c in cities}
+    for house in data.get("products", {}).get("items", []):
         city_id = str(house["city"])
         try:
-            cleaned_images = [clean_img(img['url']) for img in house['media_gallery']]
-
-            # For now, this image is making an issue. Maybe we need to add similar images later
+            cleaned_images = [clean_img(img['url']) for img in house.get('media_gallery', [])]
             cleaned_images = list(filter(lambda x: "logo-blue-1.jpg" not in x, cleaned_images))
-
-            cities_dict[city_id].append(
-                {
-                    "url_key": house["url_key"],
-                    "city": str(house["city"]),
-                    "area": str(house["living_area"]).replace(",", "."),
-                    "price_exc": str(house["basic_rent"]),
-                    "price_inc": str(
-                        house["price_range"]["maximum_price"]["final_price"]["value"]
-                    ),
-                    "available_from": house["available_startdate"],
-                    "max_register": str(
-                        max_register_id_to_str(str(house["maximum_number_of_persons"])),
-                    ),
-                    "contract_type": contract_type_id_to_str(
-                        str(house["type_of_contract"])
-                    ),
-                    "rooms": room_id_to_room(str(house["no_of_rooms"])),
-                    "images": cleaned_images
-                }
-            )
+            cities_dict[city_id].append({
+                "url_key": house["url_key"],
+                "city": city_id,
+                "area": str(house["living_area"]).replace(",", "."),
+                "price_exc": str(house["basic_rent"]),
+                "price_inc": str(house["price_range"]["maximum_price"]["final_price"]["value"]),
+                "available_from": house["available_startdate"],
+                "max_register": str(max_register_id_to_str(str(house["maximum_number_of_persons"]))),
+                "contract_type": contract_type_id_to_str(str(house["type_of_contract"])),
+                "rooms": room_id_to_room(str(house["no_of_rooms"])),
+                "images": cleaned_images
+            })
         except Exception as err:
-            debug_telegram.send_simple_msg(f"Error in parsing house!")
-            debug_telegram.send_simple_msg(str(err))
-            debug_telegram.send_simple_msg(str(house))
-            logging.error("Error in parsing house")
-            logging.error(str(err))
+            debug_telegram.send_simple_msg(f"解析房屋时出错: {str(err)}")
+            logging.error(f"解析房屋时出错: {str(err)}")
+
     return cities_dict

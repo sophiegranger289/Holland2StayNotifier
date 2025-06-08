@@ -1,5 +1,6 @@
 import sqlite3
 import logging
+import os
 from datetime import datetime
 
 # Define column names for the houses table
@@ -16,9 +17,15 @@ house_columns = [
 ]
 # Non-mass assignables: 'created_at', 'occupied_at'
 
+def get_db_path():
+    return os.path.join(os.path.dirname(__file__), "houses.db")
+
+def get_log_path():
+    return os.path.join(os.path.dirname(__file__), "house_sync.log")
+
 # Configure logging
 logging.basicConfig(
-    filename="house_sync.log",
+    filename=get_log_path(),
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
@@ -27,7 +34,7 @@ logging.basicConfig(
 # Function to create a database connection
 def create_connection():
     try:
-        conn = sqlite3.connect("houses.db")
+        conn = sqlite3.connect(get_db_path())
         logging.info("Database connection created")
         return conn
     except sqlite3.Error as e:
