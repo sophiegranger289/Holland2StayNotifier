@@ -176,6 +176,11 @@ def scrape(cities=["24", "25"], page_size=30, apikey=None, debug_chat_id=None):
             city_id = str(house["city"])
             cleaned_images = [clean_img(img['url']) for img in house.get('media_gallery', [])]
             cleaned_images = list(filter(lambda x: "logo-blue-1.jpg" not in x, cleaned_images))
+            # 加这一句只保留第一张图，或干脆不存
+            if cleaned_images:
+                cleaned_images = [cleaned_images[0]]
+            else:
+                cleaned_images = []
             cities_dict[city_id].append({
                 "url_key": house["url_key"],
                 "city": city_id,
