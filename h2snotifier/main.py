@@ -3,7 +3,6 @@ import time
 import schedule
 import json
 import os
-from dotenv import dotenv_values
 
 from .db import create_table, sync_houses
 from .scrape import scrape, house_to_msg
@@ -37,9 +36,8 @@ def scan_and_push(TELEGRAM_API_KEY, DEBUGGING_CHAT_ID):
                     debug_telegram.send_simple_msg(f"{h}")
 
 def main():
-    env = dotenv_values(os.path.join(os.path.dirname(__file__), ".env"))
-    TELEGRAM_API_KEY = env.get("TELEGRAM_API_KEY")
-    DEBUGGING_CHAT_ID = env.get("DEBUGGING_CHAT_ID")
+  TELEGRAM_API_KEY = os.environ.get("TELEGRAM_API_KEY")
+  DEBUGGING_CHAT_ID = os.environ.get("DEBUGGING_CHAT_ID")
     if not TELEGRAM_API_KEY or not DEBUGGING_CHAT_ID:
         raise ValueError("TELEGRAM_API_KEY or DEBUGGING_CHAT_ID not found in .env")
     
