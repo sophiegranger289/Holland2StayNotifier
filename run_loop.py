@@ -1,5 +1,5 @@
 import time
-import main
+from h2snotifier import main
 
 while True:
     try:
