@@ -5,7 +5,7 @@ import json
 import os
 from dotenv import dotenv_values
 
-from db import create_table, sync_houses
+from .db import create_table, sync_houses
 from scrape import scrape, house_to_msg
 from telegram_chat import TelegramBot
 
