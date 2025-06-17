@@ -196,10 +196,9 @@ def scrape(cities=["24", "25"], page_size=30, apikey=None, debug_chat_id=None):
         except Exception as err:
             debug_telegram.send_simple_msg(f"解析房屋时出错: {str(err)}")
             logging.error(f"解析房屋时出错: {str(err)}")
+        finally:
+            del response
+            del scraper
+            gc.collect()
 
     return cities_dict
-        # 资源清理
-    finally:
-        del response
-        del scraper
-        gc.collect()
