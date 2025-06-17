@@ -6,7 +6,6 @@ click==8.1.7
 cloudscraper==1.2.71
 Django==5.0.2
 idna==3.6
-image==1.5.33
 mypy-extensions==1.0.0
 packaging==23.2
 pathspec==0.12.1
