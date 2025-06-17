@@ -4,6 +4,8 @@ import schedule
 import json
 import os
 import gc
+import datetime
+import pytz
 
 from .db import create_table, sync_houses
 from .scrape import scrape, house_to_msg
@@ -13,7 +15,21 @@ def read_config(config_path=os.path.join(os.path.dirname(__file__), "config.json
     with open(config_path) as f:
         return json.load(f)
 
+def is_within_run_window():
+    tz = pytz.timezone("Europe/Amsterdam")  # 欧洲中部时间
+    now = datetime.datetime.now(tz)
+    current_time = now.time()
+    weekday = now.weekday()  # Monday is 0, Sunday is 6
+
+    is_weekday = weekday < 5
+    is_in_time_range = datetime.time(8, 30) <= current_time <= datetime.time(17, 30)
+
+    return is_weekday and is_in_time_range
+
 def scan_and_push(TELEGRAM_API_KEY, DEBUGGING_CHAT_ID):
+    if not is_within_run_window():
+        print("⏰ 当前不是工作时间（工作日 8:30–17:30），跳过扫描")
+        return
     print(">>> 正在扫描房源并推送...")
     debug_telegram = TelegramBot(apikey=TELEGRAM_API_KEY, chat_id=DEBUGGING_CHAT_ID)
     config = read_config()
@@ -35,6 +51,7 @@ def scan_and_push(TELEGRAM_API_KEY, DEBUGGING_CHAT_ID):
                 except Exception as error:
                     debug_telegram.send_simple_msg(f"❌ 推送出错: {str(error)}")
                     debug_telegram.send_simple_msg(f"{h}")
+    gc.collect()
 
 def main():
     TELEGRAM_API_KEY = os.environ.get("TELEGRAM_API_KEY")
@@ -58,7 +75,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-def scan_and_push(TELEGRAM_API_KEY, DEBUGGING_CHAT_ID):
-    ...
-    # 循环结束后主动清理
-    gc.collect()
