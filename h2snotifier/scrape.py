@@ -3,7 +3,7 @@ import json
 import os
 from dotenv import dotenv_values
 
-from telegram_chat import TelegramBot
+from .telegram_chat import TelegramBot
 import requests
 import cloudscraper
 
