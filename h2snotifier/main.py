@@ -36,8 +36,8 @@ def scan_and_push(TELEGRAM_API_KEY, DEBUGGING_CHAT_ID):
                     debug_telegram.send_simple_msg(f"{h}")
 
 def main():
-  TELEGRAM_API_KEY = os.environ.get("TELEGRAM_API_KEY")
-  DEBUGGING_CHAT_ID = os.environ.get("DEBUGGING_CHAT_ID")
+    TELEGRAM_API_KEY = os.environ.get("TELEGRAM_API_KEY")
+    DEBUGGING_CHAT_ID = os.environ.get("DEBUGGING_CHAT_ID")
     if not TELEGRAM_API_KEY or not DEBUGGING_CHAT_ID:
         raise ValueError("TELEGRAM_API_KEY or DEBUGGING_CHAT_ID not found in .env")
     
