@@ -6,8 +6,8 @@ import os
 from dotenv import dotenv_values
 
 from .db import create_table, sync_houses
-from scrape import scrape, house_to_msg
-from telegram_chat import TelegramBot
+from .scrape import scrape, house_to_msg
+from .telegram_chat import TelegramBot
 
 def read_config(config_path=os.path.join(os.path.dirname(__file__), "config.json")):
     with open(config_path) as f:
