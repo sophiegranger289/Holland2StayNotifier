@@ -167,25 +167,30 @@ def scrape(cities=["24", "25"], page_size=30, apikey=None, debug_chat_id=None):
         return {}
 
     cities_dict = {c: [] for c in cities}
+    MAX_BASIC_RENT = 900  # 你想设置的 basic rent 上限
     for house in data.get("products", {}).get("items", []):
-        city_id = str(house["city"])
         try:
-            cleaned_images = [clean_img(img['url']) for img in house.get('media_gallery', [])]
-            cleaned_images = list(filter(lambda x: "logo-blue-1.jpg" not in x, cleaned_images))
-            cities_dict[city_id].append({
-                "url_key": house["url_key"],
-                "city": city_id,
-                "area": str(house["living_area"]).replace(",", "."),
-                "price_exc": str(house["basic_rent"]),
-                "price_inc": str(house["price_range"]["maximum_price"]["final_price"]["value"]),
-                "available_from": house["available_startdate"],
-                "max_register": str(max_register_id_to_str(str(house["maximum_number_of_persons"]))),
-                "contract_type": contract_type_id_to_str(str(house["type_of_contract"])),
-                "rooms": room_id_to_room(str(house["no_of_rooms"])),
-                "images": cleaned_images
-            })
-        except Exception as err:
-            debug_telegram.send_simple_msg(f"解析房屋时出错: {str(err)}")
-            logging.error(f"解析房屋时出错: {str(err)}")
+            basic_rent = float(house["basic_rent"])
+            if basic_rent > MAX_BASIC_RENT:
+                continue  # 超过上限就跳过
+            city_id = str(house["city"])
+            try:
+                cleaned_images = [clean_img(img['url']) for img in house.get('media_gallery', [])]
+                cleaned_images = list(filter(lambda x: "logo-blue-1.jpg" not in x, cleaned_images))
+                cities_dict[city_id].append({
+                    "url_key": house["url_key"],
+                    "city": city_id,
+                    "area": str(house["living_area"]).replace(",", "."),
+                    "price_exc": str(house["basic_rent"]),
+                    "price_inc": str(house["price_range"]["maximum_price"]["final_price"]["value"]),
+                    "available_from": house["available_startdate"],
+                    "max_register": str(max_register_id_to_str(str(house["maximum_number_of_persons"]))),
+                    "contract_type": contract_type_id_to_str(str(house["type_of_contract"])),
+                    "rooms": room_id_to_room(str(house["no_of_rooms"])),
+                    "images": cleaned_images
+                })
+            except Exception as err:
+                debug_telegram.send_simple_msg(f"解析房屋时出错: {str(err)}")
+                logging.error(f"解析房屋时出错: {str(err)}")
 
-    return cities_dict
+        return cities_dict
