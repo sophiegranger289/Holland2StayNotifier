@@ -158,15 +158,20 @@ def scrape(cities=["24", "25"], page_size=30, apikey=None, debug_chat_id=None):
     }
 
     scraper = cloudscraper.create_scraper()
-    response = scraper.post("https://api.holland2stay.com/graphql/", json=payload, headers=headers)
-
+    response = None
     try:
+        response = scraper.post("https://api.holland2stay.com/graphql/", json=payload, headers=headers)
         data = response.json()["data"]
     except Exception as e:
         debug_telegram.send_simple_msg(f"JSON解析失败: {str(e)}")
         logging.error(f"JSON解析失败: {str(e)}")
         return {}
-
+    finally:
+        if response is not None:
+            del response
+        del scraper
+        gc.collect()
+  
     cities_dict = {c: [] for c in cities}
     MAX_BASIC_RENT = 900  # 你想设置的 basic rent 上限
     for house in data.get("products", {}).get("items", []):
@@ -197,9 +202,5 @@ def scrape(cities=["24", "25"], page_size=30, apikey=None, debug_chat_id=None):
         except Exception as err:
             debug_telegram.send_simple_msg(f"解析房屋时出错: {str(err)}")
             logging.error(f"解析房屋时出错: {str(err)}")
-        finally:
-            del response
-            del scraper
-            gc.collect()
-
+       
     return cities_dict
