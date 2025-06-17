@@ -1,6 +1,7 @@
 import logging
 import json
 import os
+import gc
 from dotenv import dotenv_values
 
 from .telegram_chat import TelegramBot
