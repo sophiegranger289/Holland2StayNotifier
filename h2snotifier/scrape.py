@@ -193,3 +193,8 @@ def scrape(cities=["24", "25"], page_size=30, apikey=None, debug_chat_id=None):
             logging.error(f"解析房屋时出错: {str(err)}")
 
     return cities_dict
+        # 资源清理
+    finally:
+        del response
+        del scraper
+        gc.collect()
