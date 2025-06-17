@@ -1,0 +1,12 @@
+{
+  "telegram": {
+    "groups": [
+      {
+        "name": "H2Sgroup",
+        "join_link": "https://t.me/H2Sgroup",
+        "cities": ["25"],
+        "chat_id": -4841758193
+      }
+    ]
+  }
+}
