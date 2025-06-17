@@ -3,6 +3,7 @@ import time
 import schedule
 import json
 import os
+import gc
 
 from .db import create_table, sync_houses
 from .scrape import scrape, house_to_msg
@@ -56,3 +57,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+def scan_and_push(...):
+    ...
+    # 循环结束后主动清理
+    gc.collect()
