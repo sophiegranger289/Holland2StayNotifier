@@ -97,6 +97,8 @@ Available from: {house['available_from']}
 Bedrooms: {house['rooms']}
 Max occupancy: {house['max_register']}
 Contract type: {house['contract_type']}
+<a href="https://holland2stay.com/rooms/{house['url_key']}">Apply here</a>
+"""
 
 # See details and apply on Holland2Stay website."""
 
