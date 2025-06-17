@@ -58,7 +58,7 @@ def main():
 if __name__ == "__main__":
     main()
 
-def scan_and_push(...):
+def scan_and_push(TELEGRAM_API_KEY, DEBUGGING_CHAT_ID):
     ...
     # 循环结束后主动清理
     gc.collect()
