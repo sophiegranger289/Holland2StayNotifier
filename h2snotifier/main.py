@@ -13,7 +13,7 @@ from .telegram_chat import TelegramBot
 
 # 新增：用于计数
 scan_counter = 0
-SCAN_LIMIT = 300  # 每300次重启一次
+SCAN_LIMIT = 350  # 每300次重启一次
 
 def read_config(config_path=os.path.join(os.path.dirname(__file__), "config.json")):
     with open(config_path) as f:
