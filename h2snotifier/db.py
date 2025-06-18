@@ -17,7 +17,6 @@ house_columns = [
     "pushed"
 ]
 
-
 def get_db_path():
     return os.path.join(os.path.dirname(__file__), "houses.db")
 
@@ -83,27 +82,33 @@ def sync_houses(city_id, houses):
     c = conn.cursor()
     new_houses = []
     try:
-        c.execute("""SELECT url_key FROM houses WHERE city = ? AND occupied_at IS NULL""", (city_id,))
-        existing_houses = set(row[0] for row in c.fetchall())
+        # 查已有房源
+        c.execute("""SELECT url_key, pushed FROM houses WHERE city = ? AND occupied_at IS NULL""", (city_id,))
+        existing = {row[0]: row[1] for row in c.fetchall()}  # url_key -> pushed 状态
 
-        new_houses_url_keys = {house["url_key"] for house in houses}
-        to_be_updated = existing_houses - new_houses_url_keys
+        # 找出消失的房源（需要更新 occupied_at）
+        current_keys = {house["url_key"] for house in houses}
+        to_be_updated = set(existing.keys()) - current_keys
         if to_be_updated:
             update_query = f"""UPDATE houses SET occupied_at = ? WHERE occupied_at IS NULL AND url_key IN ({','.join(['?'] * len(to_be_updated))})"""
             c.execute(update_query, (datetime.now().isoformat(),) + tuple(to_be_updated))
 
+        # 插入新房源 & 找出未推送过的房源
         to_be_inserted = []
         for house in houses:
-            if house["url_key"] not in existing_houses:
+            url_key = house["url_key"]
+            if url_key not in existing:
                 row = tuple(house[column] if column != "pushed" else 0 for column in house_columns)
                 to_be_inserted.append(row)
                 new_houses.append(house)
+            elif existing[url_key] == 0:
+                new_houses.append(house)  # 已存在但未推送过
 
         if to_be_inserted:
             insert_query = f"""INSERT INTO houses ({','.join(house_columns)}) VALUES ({','.join(['?'] * len(house_columns))})"""
             c.executemany(insert_query, to_be_inserted)
             conn.commit()
-            logging.info(f"{len(new_houses)} new houses inserted into the database")
+            logging.info(f"{len(to_be_inserted)} new houses inserted into the database")
 
     except sqlite3.Error as e:
         logging.error(f"Error syncing houses: {e}")
