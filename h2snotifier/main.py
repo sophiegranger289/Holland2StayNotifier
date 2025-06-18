@@ -1,38 +1,44 @@
 import logging
-import json
 import os
-import gc
+import json
 import datetime
 import pytz
+import gc
 
 from .db import create_table, sync_houses
 from .scrape import scrape, house_to_msg
 from .telegram_chat import TelegramBot
 
-def read_config(config_path=os.path.join(os.path.dirname(__file__), "config.json")):
-    with open(config_path) as f:
-        return json.load(f)
+# Load config and API keys once
+CONFIG = None
+TELEGRAM_API_KEY = os.environ.get("TELEGRAM_API_KEY")
+DEBUGGING_CHAT_ID = os.environ.get("DEBUGGING_CHAT_ID")
+DEBUG_TELEGRAM = TelegramBot(apikey=TELEGRAM_API_KEY, chat_id=DEBUGGING_CHAT_ID)
+
+if not TELEGRAM_API_KEY or not DEBUGGING_CHAT_ID:
+    raise ValueError("TELEGRAM_API_KEY or DEBUGGING_CHAT_ID not found in environment")
+
+def load_config():
+    global CONFIG
+    if CONFIG is None:
+        with open(os.path.join(os.path.dirname(__file__), "config.json")) as f:
+            CONFIG = json.load(f)
+    return CONFIG
 
 def is_within_run_window():
-    tz = pytz.timezone("Europe/Amsterdam")  # 欧洲中部时间
+    tz = pytz.timezone("Europe/Amsterdam")
     now = datetime.datetime.now(tz)
     current_time = now.time()
-    weekday = now.weekday()  # Monday is 0, Sunday is 6
+    weekday = now.weekday()  # Monday is 0
+    return weekday < 5 and datetime.time(8, 30) <= current_time <= datetime.time(17, 30)
 
-    is_weekday = weekday < 5
-    is_in_time_range = datetime.time(8, 30) <= current_time <= datetime.time(17, 30)
-
-    return is_weekday and is_in_time_range
-
-def scan_and_push(TELEGRAM_API_KEY, DEBUGGING_CHAT_ID):
+def scan_and_push():
     if not is_within_run_window():
         print("⏰ 当前不是工作时间（工作日 8:30–17:30），跳过扫描")
         return
 
     print(">>> 正在扫描房源并推送...")
-    debug_telegram = TelegramBot(apikey=TELEGRAM_API_KEY, chat_id=DEBUGGING_CHAT_ID)
-    config = read_config()
-
+    config = load_config()
     for gp in config["telegram"]["groups"]:
         cities = gp["cities"]
         chat_id = gp["chat_id"]
@@ -47,26 +53,22 @@ def scan_and_push(TELEGRAM_API_KEY, DEBUGGING_CHAT_ID):
                     res = telegram.send_simple_msg(msg)
                     logging.info(f"✅ Sent to TG: {h['url_key']}")
                     if res is None:
-                        debug_telegram.send_simple_msg("⚠️ Telegram 发送失败")
-                        debug_telegram.send_simple_msg(msg[:400])
+                        DEBUG_TELEGRAM.send_simple_msg("⚠️ Telegram 发送失败")
+                        DEBUG_TELEGRAM.send_simple_msg(msg[:400])
                 except Exception as error:
-                    debug_telegram.send_simple_msg(f"❌ 推送出错: {str(error)}")
-                    debug_telegram.send_simple_msg(f"{h}")
+                    DEBUG_TELEGRAM.send_simple_msg(f"❌ 推送出错: {str(error)}")
+                    DEBUG_TELEGRAM.send_simple_msg(f"{h}")
 
     gc.collect()
 
 def main():
-    TELEGRAM_API_KEY = os.environ.get("TELEGRAM_API_KEY")
-    DEBUGGING_CHAT_ID = os.environ.get("DEBUGGING_CHAT_ID")
+    create_table()
+    scan_and_push()
 
-    if not TELEGRAM_API_KEY or not DEBUGGING_CHAT_ID:
-        raise ValueError("TELEGRAM_API_KEY or DEBUGGING_CHAT_ID not found in .env")
-
+if __name__ == "__main__":
     logging.basicConfig(
         filename=os.path.join(os.path.dirname(__file__), "house_sync.log"),
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
-
-    create_table()
-    scan_and_push(TELEGRAM_API_KEY, DEBUGGING_CHAT_ID)
+    main()
