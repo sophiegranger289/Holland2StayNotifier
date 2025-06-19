@@ -91,7 +91,7 @@ def generate_payload(cities, page_size):
             "currentPage": 1,
             "id": "Nw==",
             "filters": {
-                "available_to_book": {"in": ["179", "336"]},
+                "available_to_book": {"in": ["179"]},
                 "city": {"in": cities},
                 "category_uid": {"eq": "Nw=="},
             },
